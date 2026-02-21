@@ -1,16 +1,8 @@
-const sqlite3 = require('sqlite3').verbose();
-const path = require('path');
+const { createClient } = require('@supabase/supabase-js');
 
-const dbPath = path.join(__dirname, '..', 'billing.db');
-const db = new sqlite3.Database(dbPath, (err) => {
-  if (err) {
-    console.error('❌ Database connection error:', err);
-  } else {
-    console.log('✅ Connected to SQLite database');
-  }
-});
+const supabaseUrl = 'https://lbthofzpyybmwwfekkkr.supabase.co';
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxidGhvZnpweXlibXd3ZmVra2tyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE2NjY0MzQsImV4cCI6MjA4NzI0MjQzNH0.T8SMt7yeBGsWARPhguH91fHMGbN3QgMYmJ1KQRQX_WE';  // Your anon key
 
-// Enable foreign keys
-db.run('PRAGMA foreign_keys = ON');
+const supabase = createClient(supabaseUrl, supabaseKey);
 
-module.exports = db;
+module.exports = supabase;
