@@ -3,12 +3,16 @@ const cors = require('cors');
 const path = require('path');
 
 const app = express();
-const PORT = 4000;
+const PORT = process.env.PORT || 4000;
 
 // Middleware
 app.use(cors());
 app.use(express.json());
-app.use(express.static('public'));
+app.use(express.static(__dirname));
+
+// Serve frontend pages ✅
+app.get('/', (req, res) => res.sendFile(__dirname + '/index.html'));
+app.get('/print.html', (req, res) => res.sendFile(__dirname + '/print.html'));
 
 // Import database for custom routes
 const db = require('./database/db');
@@ -522,3 +526,4 @@ app.listen(PORT, () => {
 });
 
 module.exports = app;
+
