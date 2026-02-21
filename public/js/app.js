@@ -1,5 +1,5 @@
 // API Configuration
-const API_BASE = 'http://localhost:4000/api';
+const API_BASE = 'https://bhagwati-billing.onrender.com/api';
 
 // Global App State
 const App = {
@@ -170,3 +170,4 @@ const App = {
 document.addEventListener('DOMContentLoaded', () => {
   App.init();
 });
+
