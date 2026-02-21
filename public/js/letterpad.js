@@ -232,7 +232,7 @@ updateRowDOM(id) {
     .letterpad-container {
       display: flex;
       flex-direction: column;
-      min-height: calc(297mm - 30mm);
+      min-height: calc(297mm - 20mm);
     }
       
     .lp-content {
@@ -445,3 +445,4 @@ updateRowDOM(id) {
     `;
   }
 };
+
