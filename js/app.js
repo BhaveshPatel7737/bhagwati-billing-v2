@@ -1,5 +1,5 @@
 // API Configuration
-const API_BASE = 'https://bhagwati-billing.onrender.com/api/';  // ✅ LIVE
+const API_BASE = 'https://bhagwati-billing.onrender.com/api';  // ✅ LIVE
 
 
 // Global App State
@@ -171,4 +171,5 @@ const App = {
 document.addEventListener('DOMContentLoaded', () => {
   App.init();
 });
+
 
