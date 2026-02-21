@@ -13,7 +13,7 @@ const COMPANY_INFO = {
     ifsc: "IOBA0000337",
     branch: "Gandhinagar"
   },
-  logo: "/logo.png" // Place your logo in public/logo.png
+  logo: "logo.png" // Place your logo in public/logo.png
 };
 
 // Main print function
@@ -794,3 +794,4 @@ function generateEnvelopeHTML(invoice) {
 </html>
   `;
 }
+
