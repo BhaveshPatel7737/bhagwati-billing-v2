@@ -251,30 +251,34 @@ app.use('/api/customers', require('./routes/customers'));
 app.use('/api/hsn', require('./routes/hsn'));
 app.use('/api/invoices', require('./routes/invoices'));
 
-// Get invoices by type
-app.get('/api/invoices/type/:type', (req, res) => {
-  const type = req.params.type;
-  
-  const query = `
-    SELECT 
-      i.*,
-      c.name as customer_name,
-      c.gstin as customer_gstin,
-      c.state as customer_state
-    FROM invoices i
-    LEFT JOIN customers c ON i.customer_id = c.id
-    WHERE i.type = ?
-    ORDER BY i.id DESC
-  `;
-  
-  db.all(query, [type], (err, rows) => {
-    if (err) {
-      console.error('Get invoices by type error:', err);
-      return res.status(500).json({ error: err.message });
-    }
+// Get invoices by type (CUSTOM ROUTE - UPDATE TO SUPABASE)
+app.get('/api/invoices/type/:type', async (req, res) => {
+  try {
+    const { data, error } = await db
+      .from('invoices')
+      .select(`
+        *,
+        customers(name, gstin, state)
+      `)
+      .eq('type', req.params.type)
+      .order('id', { ascending: false });
+    
+    if (error) throw error;
+    
+    const rows = data.map(i => ({
+      ...i,
+      customer_name: i.customers?.name || '',
+      customer_gstin: i.customers?.gstin || '',
+      customer_state: i.customers?.state || ''
+    }));
+    
     res.json(rows || []);
-  });
+  } catch (error) {
+    console.error('Get invoices by type error:', error);
+    res.status(500).json({ error: error.message });
+  }
 });
+
 
 // Get single invoice for editing
 app.get('/api/invoices/:id/edit', (req, res) => {
@@ -526,4 +530,5 @@ app.listen(PORT, () => {
 });
 
 module.exports = app;
+
 
