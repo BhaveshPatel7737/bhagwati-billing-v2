@@ -47,103 +47,49 @@ app.delete('/api/customers/clear-all', (req, res) => {
   });
 });
 
-// Bulk import customers with ID reuse
-app.post('/api/customers/bulk', (req, res) => {
+// Bulk import customers (SUPABASE)
+app.post('/api/customers/bulk', async (req, res) => {
   const { customers, clearFirst } = req.body;
   
   if (!customers || !Array.isArray(customers)) {
     return res.status(400).json({ error: 'Invalid data format' });
   }
-  
-  console.log(`📥 Importing ${customers.length} customers, clearFirst: ${clearFirst}`);
-  
-  db.serialize(() => {
+
+  try {
     if (clearFirst) {
       // Clear all data
-      db.run('DELETE FROM invoice_lines');
-      db.run('DELETE FROM invoices');
-      db.run('DELETE FROM customers', (err) => {
-        if (err) console.error('Clear error:', err);
-        else console.log('✅ Cleared existing customers');
-      });
-      
-      // Reset auto-increment counter
-      db.run('DELETE FROM sqlite_sequence WHERE name="customers"', (err) => {
-        if (err) console.error('Reset sequence error:', err);
-        else console.log('✅ Reset ID counter');
-      });
+      await db.from('invoice_lines').delete();
+      await db.from('invoices').delete();
+      await db.from('customers').delete();
+      console.log('✅ Cleared existing data');
     }
     
-    let inserted = 0;
-    let errors = 0;
-    let currentIndex = 0;
+    // Insert customers
+    const { data, error } = await db
+      .from('customers')
+      .insert(customers.map(c => ({
+        name: c.name || '',
+        gstin: c.gstin || '',
+        state: c.state || 'Gujarat',
+        state_code: c.state_code || '24',
+        address: c.address || '',
+        mobile: c.mobile || '',
+        email: c.email || ''
+      })));
     
-    // Function to find next available ID and insert customer
-    function insertNextCustomer() {
-      if (currentIndex >= customers.length) {
-        // All done
-        console.log(`✅ Bulk import complete: ${inserted} inserted, ${errors} errors`);
-        return res.json({ 
-          success: true,
-          inserted: inserted,
-          errors: errors,
-          total: customers.length
-        });
-      }
-      
-      const cust = customers[currentIndex];
-      currentIndex++;
-      
-      // Find next available ID (fills gaps)
-      db.get(`
-        SELECT COALESCE(
-          (SELECT MIN(id + 1) FROM customers WHERE (id + 1) NOT IN (SELECT id FROM customers)),
-          (SELECT COALESCE(MAX(id), 0) + 1 FROM customers)
-        ) as next_id
-      `, [], (err, row) => {
-        if (err) {
-          console.error('Find ID error:', err);
-          errors++;
-          insertNextCustomer(); // Continue with next customer
-          return;
-        }
-        
-        const nextId = row.next_id;
-        
-        // Insert with specific ID
-        db.run(
-          `INSERT INTO customers (id, name, gstin, state, state_code, address, mobile, email)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-          [
-            nextId,
-            cust.name || '',
-            cust.gstin || '',
-            cust.state || 'Gujarat',
-            cust.state_code || '24',
-            cust.address || '',
-            cust.mobile || '',
-            cust.email || ''
-          ],
-          (err) => {
-            if (err) {
-              errors++;
-              console.error(`Insert error (ID ${nextId}):`, err.message);
-            } else {
-              inserted++;
-              console.log(`  ✓ Inserted customer with ID ${nextId}: ${cust.name}`);
-            }
-            
-            // Insert next customer
-            insertNextCustomer();
-          }
-        );
-      });
-    }
-    
-    // Start inserting customers one by one
-    insertNextCustomer();
-  });
+    if (error) throw error;
+    console.log(`✅ Imported ${data.length} customers`);
+    res.json({ 
+      success: true,
+      inserted: data.length,
+      total: customers.length 
+    });
+  } catch (error) {
+    console.error('Bulk import error:', error);
+    res.status(500).json({ error: error.message });
+  }
 });
+
 
 // Add new customer with ID reuse
 app.post('/api/customers', (req, res) => {
@@ -530,5 +476,6 @@ app.listen(PORT, () => {
 });
 
 module.exports = app;
+
 
 
