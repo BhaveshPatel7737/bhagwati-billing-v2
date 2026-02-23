@@ -47,41 +47,46 @@ app.delete('/api/customers/clear-all', (req, res) => {
   });
 });
 
-// Bulk import customers (SUPABASE)
 app.post('/api/customers/bulk', async (req, res) => {
   const { customers, clearFirst } = req.body;
   
   if (!customers || !Array.isArray(customers)) {
     return res.status(400).json({ error: 'Invalid data format' });
   }
-
+  
+  console.log(`📥 Importing ${customers.length} customers`);
+  
   try {
     if (clearFirst) {
-      // Clear all data
-      await db.from('invoice_lines').delete();
-      await db.from('invoices').delete();
-      await db.from('customers').delete();
+      await db.from('invoice_lines').delete().neq('id', 0);
+      await db.from('invoices').delete().neq('id', 0);
+      await db.from('customers').delete().neq('id', 0);
       console.log('✅ Cleared existing data');
     }
     
-    // Insert customers
+    const formattedCustomers = customers.map(cust => ({
+      name: cust.name || '',
+      gstin: cust.gstin || '',
+      state: cust.state || 'Gujarat',
+      state_code: cust.state_code || '24',
+      address: cust.address || '',
+      mobile: cust.mobile || '',
+      email: cust.email || ''
+    }));
+    
     const { data, error } = await db
       .from('customers')
-      .insert(customers.map(c => ({
-        name: c.name || '',
-        gstin: c.gstin || '',
-        state: c.state || 'Gujarat',
-        state_code: c.state_code || '24',
-        address: c.address || '',
-        mobile: c.mobile || '',
-        email: c.email || ''
-      })));
+      .insert(formattedCustomers);
     
     if (error) throw error;
-    console.log(`✅ Imported ${data.length} customers`);
+    
+    // ✅ FIX: Check data exists
+    const insertedCount = data ? data.length : 0;
+    
+    console.log(`✅ Bulk imported ${insertedCount} customers`);
     res.json({ 
-      success: true,
-      inserted: data.length,
+      success: true, 
+      inserted: insertedCount, 
       total: customers.length 
     });
   } catch (error) {
@@ -89,6 +94,8 @@ app.post('/api/customers/bulk', async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+
+
 
 
 // Add new customer with ID reuse
@@ -476,6 +483,7 @@ app.listen(PORT, () => {
 });
 
 module.exports = app;
+
 
 
 
