@@ -19,21 +19,22 @@ class CustomerController {
 
   // Get single customer
   static async getById(req, res) {
-    try {
-      const { data, error } = await db
-        .from('customers')
-        .select('*')
-        .eq('id', req.params.id)
-        .single();
-      
-      if (error && error.code !== 'PGRST116') throw error;  // Not found OK
-      if (!data) return res.status(404).json({ error: 'Customer not found' });
-      res.json(data);
-    } catch (error) {
-      console.error('Get customer error:', error);
-      res.status(500).json({ error: error.message });
-    }
+  try {
+    const { data, error } = await db
+      .from('customers')
+      .select('*')
+      .eq('id', req.params.id)
+      .maybeSingle();  // ✅ FIX: maybeSingle() not single()
+    
+    if (error) throw error;
+    if (!data) return res.status(404).json({ error: 'Customer not found' });
+    res.json(data);
+  } catch (error) {
+    console.error('Get customer error:', error);
+    res.status(500).json({ error: error.message });
   }
+}
+
 
   // Create customer
   static async create(req, res) {
@@ -120,3 +121,4 @@ class CustomerController {
 }
 
 module.exports = CustomerController;
+
