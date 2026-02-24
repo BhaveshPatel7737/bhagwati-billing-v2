@@ -118,7 +118,39 @@ class CustomerController {
       res.status(500).json({ error: error.message });
     }
   }
+  // Allow POST /api/customers/:id for update (matches frontend)
+  static async upsert(req, res) {  // Handles both create/update
+    const id = req.params.id ? parseInt(req.params.id) : null;
+    const customerData = req.body;
+    
+    try {
+      let data, error;
+      
+      if (id) {
+        // Update
+        ({ data, error } = await db
+          .from('customers')
+          .update(customerData)
+          .eq('id', id)
+          .select()
+          .single());
+      } else {
+        // Create
+        ({ data, error } = await db
+          .from('customers')
+          .insert([customerData])
+          .select('id')
+          .single());
+      }
+      
+      if (error) throw error;
+      res.json({ id: data.id, message: 'Customer saved' });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  }
 }
 
 module.exports = CustomerController;
+
 
