@@ -15,7 +15,11 @@ app.get('/', (req, res) => res.sendFile(__dirname + '/index.html'));
 app.get('/print.html', (req, res) => res.sendFile(__dirname + '/print.html'));
 
 // Import database for custom routes
-const db = require('./database/db');
+const { createClient } = require('@supabase/supabase-js');
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_ANON_KEY;
+const db = createClient(supabaseUrl, supabaseKey);
+
 
 // ===== CUSTOM CUSTOMER ROUTES (BEFORE STANDARD ROUTES) =====
 
@@ -483,6 +487,7 @@ app.listen(PORT, () => {
 });
 
 module.exports = app;
+
 
 
 
