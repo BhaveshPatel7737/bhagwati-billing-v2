@@ -18,30 +18,35 @@ class HsnController {
 
   static async create(req, res) {
     const { hsn_code, gst_rate_percent, exempt_for_bos } = req.body;
-
+  
     if (!hsn_code) {
       return res.status(400).json({ error: 'HSN code required' });
     }
-
+  
     try {
+      // UPSERT: Insert OR Update existing
       const { data, error } = await db
         .from('hsn')
-        .insert([{
-          code: hsn_code,  // hsn_code → code
+        .upsert([{
+          code: hsn_code,
           gst_rate: gst_rate_percent || 0,
           exempt_for_bos: exempt_for_bos ? true : false
-        }])
+        }], { 
+          onConflict: 'code',  // ✅ Ignore/Replace duplicates
+          ignoreDuplicates: true 
+        })
         .select('id')
         .single();
       
       if (error) throw error;
-      console.log(`✅ HSN created: ${hsn_code}`);
-      res.json({ id: data.id, message: 'HSN created' });
+      console.log(`✅ HSN saved: ${hsn_code}`);
+      res.json({ id: data.id, message: 'HSN saved' });
     } catch (error) {
       console.error('Create HSN error:', error);
       res.status(500).json({ error: error.message });
     }
   }
+
 
   static async delete(req, res) {
     try {
@@ -66,3 +71,4 @@ class HsnController {
 }
 
 module.exports = HsnController;
+
