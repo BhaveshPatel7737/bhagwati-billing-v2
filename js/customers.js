@@ -130,7 +130,7 @@ showEditForm(id) {
     try {
       if (this.editingId) {
         // UPDATE existing customer
-        await App.put(`/customers/${this.editingId}`, data, 'PUT');
+        await App.post(`/customers/${this.editingId}`, data, 'PUT');
         App.showMessage('✅ Customer updated successfully!', 'success');
       } else {
         // CREATE new customer
@@ -309,4 +309,5 @@ showEditForm(id) {
     }
   }
 };
+
 
