@@ -1,74 +1,44 @@
-const db = require('../database/db');  // Now Supabase!
+const { createClient } = require('@supabase/supabase-js');
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_ANON_KEY;
+const supabase = createClient(supabaseUrl, supabaseKey);
 
-class HsnController {
-  static async getAll(req, res) {
+const HsnController = {
+  async getAll(req, res) {
     try {
-      const { data, error } = await db
-        .from('hsn')
-        .select('*')
-        .order('code', { ascending: true });  // hsn_code → code
-      
+      const { data, error } = await supabase.from('hsn').select('*');
       if (error) throw error;
       res.json(data || []);
     } catch (error) {
       console.error('Get HSN error:', error);
       res.status(500).json({ error: error.message });
     }
-  }
+  },
 
-  static async create(req, res) {
-    const { hsn_code, gst_rate_percent, exempt_for_bos } = req.body;
-  
-    if (!hsn_code) {
-      return res.status(400).json({ error: 'HSN code required' });
-    }
-  
+  async create(req, res) {
     try {
-      // UPSERT: Insert OR Update existing
-      const { data, error } = await db
-        .from('hsn')
-        .upsert([{
-          code: hsn_code,
-          gst_rate: gst_rate_percent || 0,
-          exempt_for_bos: exempt_for_bos ? true : false
-        }], { 
-          onConflict: 'code',  // ✅ Ignore/Replace duplicates
-          ignoreDuplicates: true 
-        })
-        .select('id')
-        .single();
-      
+      const { hsncode, description, gstratepercent = 18 } = req.body;
+      if (!hsncode || !description) return res.status(400).json({ error: 'HSN code and description required' });
+      const { data, error } = await supabase.from('hsn').insert([{ hsncode, description, gstratepercent }]).select();
       if (error) throw error;
-      console.log(`✅ HSN saved: ${hsn_code}`);
-      res.json({ id: data.id, message: 'HSN saved' });
+      res.json(data[0]);
     } catch (error) {
       console.error('Create HSN error:', error);
       res.status(500).json({ error: error.message });
     }
-  }
+  },
 
-
-  static async delete(req, res) {
+  async delete(req, res) {
     try {
-      const { data, error } = await db
-        .from('hsn')
-        .delete()
-        .eq('id', req.params.id)
-        .select();
-      
+      const { id } = req.params;
+      const { error } = await supabase.from('hsn').delete().eq('id', id);
       if (error) throw error;
-      if (!data || data.length === 0) {
-        return res.status(404).json({ error: 'HSN not found' });
-      }
-      
-      console.log(`✅ HSN deleted: ID ${req.params.id}`);
-      res.json({ deleted: data.length });
+      res.json({ message: 'HSN deleted' });
     } catch (error) {
       console.error('Delete HSN error:', error);
       res.status(500).json({ error: error.message });
     }
   }
-}
+};
 
 module.exports = HsnController;
-
