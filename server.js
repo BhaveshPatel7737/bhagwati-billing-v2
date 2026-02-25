@@ -206,6 +206,32 @@ app.delete('/api/customers/:id/force', (req, res) => {
 
 app.use('/api/customers', require('./routes/customers'));
 app.use('/api/hsn', require('./routes/hsn'));
+
+app.get('/api/invoices/:id/edit', async (req, res) => {
+  try {
+    const { data: invoice, error: invError } = await db
+      .from('invoices')
+      .select('*, customers(name, gstin, address, state, state_code, mobile)')
+      .eq('id', req.params.id)
+      .single();
+    if (invError || !invoice) return res.status(404).json({ error: 'Invoice not found' });
+    
+    const { data: lines, error: lineError } = await db
+      .from('invoice_lines')
+      .select('*')
+      .eq('invoice_id', req.params.id);
+    if (lineError) throw lineError;
+    
+    res.json({ 
+      invoice, 
+      lines: lines || [] 
+    });
+  } catch (error) {
+    console.error('Direct edit error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.use('/api/invoices', require('./routes/invoices'));
 
 // Get invoices by type (CUSTOM ROUTE - UPDATE TO SUPABASE)
