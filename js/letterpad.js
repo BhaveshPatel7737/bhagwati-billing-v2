@@ -217,150 +217,124 @@ updateRowDOM(id) {
   <title>Letterpad - ${invoice.series}/${invoice.number}</title>
   <style>
     * { margin:0; padding:0; box-sizing:border-box; }
-    html, body {
-      height: 100%;
+    
+    @page { 
+      size: A4 portrait; 
+      margin: 5mm;  /* Tighter margins */
     }
+    
+    html, body {
+      height: 100vh;
+      overflow: hidden;  /* CRITICAL: Prevent page break */
+    }
+    
     body {
       display: flex;
       flex-direction: column;
-      min-height: 297mm;
       font-family: 'Segoe UI', Arial, sans-serif;
-      background:white;
-      color:#000;
-      padding:15mm;
+      background: white;
+      color: #000;
+      padding: 5mm;  /* Match @page */
+      height: 100vh;
     }
+    
     .letterpad-container {
       display: flex;
       flex-direction: column;
-      min-height: calc(297mm - 10mm);
+      height: 100%;
+      min-height: 0;  /* Allow flex shrink */
     }
-      
+    
     .lp-content {
       flex: 1;
+      min-height: 0;
+      overflow: hidden;  /* Clip table overflow */
     }
-    /* Header with logo and company name */
+    
+    /* Compact header */
     .lp-header {
       display: grid;
-      grid-template-columns: 120px 1fr;
-      gap: 10px;
-      padding: 0px 10px;
-      align-items: center;
-      border-bottom: 2px solid #000;
-      background: white;
+      grid-template-columns: 100px 1fr;  /* Smaller logo */
+      gap: 8px;
+      padding: 2px 8px;
+      border-bottom: 1px solid #000;
     }
-    .lp-logo {
-      display: flex;
-      justify-content: center;
-      align-items: center;
+    
+    .lp-logo img {
+      max-width: 90px;  /* Smaller */
+      max-height: 80px;
     }
-    .lp-logo img{
-      max-width: 150px;
-      max-height: 120px;
-      object-fit: contain;
-    }
-
-    .lp-company {
-      text-align: center;
-      padding: 0 10px;
-      border-left: 2px solid #ddd;
-    }
+    
     .lp-company-name {
-      font-size:22px;
-      font-weight:800;
-      color:#1a472a;
-      margin-bottom:4px;
+      font-size: 18px;  /* Smaller */
+      font-weight: 700;
+      margin-bottom: 2px;
     }
+    
     .lp-company-address {
-      font-size:11px;
-      line-height:1.4;
+      font-size: 10px;  /* Smaller */
+      line-height: 1.2;
     }
     
     .lp-title {
-      text-align:center;
-      font-size:18px;
-      font-weight:700;
-      margin:15px 0;
-      text-decoration:underline;
+      font-size: 16px;
+      text-align: center;
+      margin: 8px 0;  /* Less margin */
+      font-weight: 700;
     }
     
-    /* Two column layout: left = buyer, right = invoice details */
+    /* Tighter details */
     .lp-details {
       display: grid;
-      grid-template-columns: 2fr 1fr;
-      margin-bottom:20px;
-    }
-    
-    .lp-left {
-      flex:1;
-      padding:12px;
-    }
-    
-    .lp-right {
-      flex:1;
-      padding:12px;
+      grid-template-columns: 1fr 1fr;  /* Even split */
+      margin: 8px 0;  /* Less margin */
+      font-size: 11px;
     }
     
     .lp-section-title {
-      font-size:13px;
-      font-weight:700;
-      margin-bottom:8px;
-      text-decoration:underline;
+      font-size: 11px;
+      margin-bottom: 4px;
     }
     
     .lp-field {
-      font-size:12px;
-      margin-bottom:5px;
-      line-height:1.5;
+      font-size: 11px;
+      margin-bottom: 2px;
+      line-height: 1.3;
     }
     
-    .lp-field strong {
-      display:inline-block;
-      min-width:80px;
-    }
-    
-    /* Table - no Sr, no Description */
+    /* Compact table */
     table {
-      width:100%;
-      border-collapse:collapse;
-      margin-top:15px;
-      font-size:12px;
-    }
-    th, td {
-      border:1px solid #000;
-      padding:8px 6px;
-      text-align:center;
-    }
-    tfoot td {
-      font-weight:bold;
-      background:#f0f0f0;
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 8px;
+      font-size: 11px;  /* Smaller */
+      table-layout: fixed;
     }
     
-    .lp-footer {
-      margin-top:auto;
-      padding-top:25px;
-      font-size:11px;
-      display:flex;
-      justify-content:flex-end;
-      align-items:flex-end;
+    th, td {
+      border: 1px solid #000;
+      padding: 3px 2px;  /* Much tighter */
+      text-align: center;
+      font-size: 11px;
     }
-    .right-align {
-      text-align:right;
+    
+    /* Fixed footer - always visible */
+    .lp-footer {
+      flex-shrink: 0;
+      padding-top: 8px;  /* Less space */
+      margin-top: auto;
+      font-size: 10px;
     }
     
     @media print {
-      body { 
-        padding:10mm;
-        min-height: 297mm; 
+      html, body {
+        height: auto;
+        overflow: visible;
       }
-      @page {
-        size: A4 portrait;
-        margin:10mm;
-      }
-      .letterpad-container {
-        min-height: calc(297mm - 30mm);
-      }
+      body { padding: 5mm; }
     }
   </style>
+
 </head>
 <body>
   <div class="letterpad-container">
