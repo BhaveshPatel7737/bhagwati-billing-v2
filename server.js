@@ -237,6 +237,229 @@ app.get('/api/invoices/type/:type', async (req, res) => {
 });
 
 
+// Get single invoice for editing
+app.get('/api/invoices/:id/edit', (req, res) => {
+  const invoiceId = req.params.id;
+  
+  const invoiceQuery = `
+    SELECT 
+      i.*,
+      c.name as customer_name,
+      c.gstin as customer_gstin,
+      c.state as customer_state,
+      c.state_code as customer_state_code,
+      c.address as customer_address,
+      c.mobile as customer_mobile
+    FROM invoices i
+    LEFT JOIN customers c ON i.customer_id = c.id
+    WHERE i.id = ?
+  `;
+  
+  db.get(invoiceQuery, [invoiceId], (err, invoice) => {
+    if (err) {
+      console.error('Get invoice error:', err);
+      return res.status(500).json({ error: err.message });
+    }
+    
+    if (!invoice) {
+      return res.status(404).json({ error: 'Invoice not found' });
+    }
+    
+    db.all('SELECT * FROM invoice_lines WHERE invoice_id = ?', [invoiceId], (err, lines) => {
+      if (err) {
+        console.error('Get invoice lines error:', err);
+        return res.status(500).json({ error: err.message });
+      }
+      
+      res.json({ invoice, lines: lines || [] });
+    });
+  });
+});
+
+// Update invoice
+app.put('/api/invoices/:id', (req, res) => {
+  const invoiceId = req.params.id;
+  const { type, series, number, date, customer_id, truck_no, cash_credit, lines } = req.body;
+  
+  console.log(`✏️ Updating invoice ID: ${invoiceId}`);
+  
+  db.serialize(() => {
+    // Delete existing lines
+    db.run('DELETE FROM invoice_lines WHERE invoice_id = ?', [invoiceId], (err) => {
+      if (err) console.error('Delete lines error:', err);
+    });
+    
+    // Calculate totals (same logic as create)
+    let taxableValue = 0;
+    let cgstAmount = 0;
+    let sgstAmount = 0;
+    let igstAmount = 0;
+    
+    const linesWithAmounts = lines.map(line => {
+      const amount = (line.qty || 0) * (line.rate || 0);
+      taxableValue += amount;
+      return { ...line, amount };
+    });
+    
+    // Get customer state for tax calculation
+    db.get('SELECT state_code FROM customers WHERE id = ?', [customer_id], (err, customer) => {
+      const isInterState = customer && customer.state_code !== '24';
+      
+      // Calculate GST (simplified - you can add HSN-based calculation)
+      const gstRate = 0.18; // 18% default
+      if (isInterState) {
+        igstAmount = taxableValue * gstRate;
+      } else {
+        cgstAmount = taxableValue * (gstRate / 2);
+        sgstAmount = taxableValue * (gstRate / 2);
+      }
+      
+      const grandTotal = taxableValue + cgstAmount + sgstAmount + igstAmount;
+      
+      // Update invoice
+      db.run(
+        `UPDATE invoices 
+         SET type=?, series=?, number=?, date=?, customer_id=?, truck_no=?, cash_credit=?,
+             taxable_value=?, cgst_amount=?, sgst_amount=?, igst_amount=?, grand_total=?
+         WHERE id=?`,
+        [type, series, number, date, customer_id, truck_no, cash_credit,
+         taxableValue, cgstAmount, sgstAmount, igstAmount, grandTotal, invoiceId],
+        function(err) {
+          if (err) {
+            console.error('Update invoice error:', err);
+            return res.status(500).json({ error: err.message });
+          }
+          
+          // Insert updated lines
+          const stmt = db.prepare(`
+            INSERT INTO invoice_lines (invoice_id, hsn_code, description, qty, unit, rate, amount)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+          `);
+          
+          linesWithAmounts.forEach(line => {
+            stmt.run(invoiceId, line.hsn_code, line.description, line.qty, line.unit, line.rate, line.amount);
+          });
+          
+          stmt.finalize(() => {
+            console.log(`✅ Invoice ${invoiceId} updated successfully`);
+            res.json({
+              id: invoiceId,
+              series,
+              number,
+              grand_total: grandTotal,
+              message: 'Invoice updated'
+            });
+          });
+        }
+      );
+    });
+  });
+});
+
+// Delete invoice with ID reuse
+app.delete('/api/invoices/:id', (req, res) => {
+  const invoiceId = req.params.id;
+  
+  console.log(`🗑️ Deleting invoice ID: ${invoiceId}`);
+  
+  db.serialize(() => {
+    // Delete lines first
+    db.run('DELETE FROM invoice_lines WHERE invoice_id = ?', [invoiceId], (err) => {
+      if (err) console.error('Delete lines error:', err);
+    });
+    
+    // Delete invoice
+    db.run('DELETE FROM invoices WHERE id = ?', [invoiceId], function(err) {
+      if (err) {
+        console.error('Delete invoice error:', err);
+        return res.status(500).json({ error: err.message });
+      }
+      
+      if (this.changes === 0) {
+        return res.status(404).json({ error: 'Invoice not found' });
+      }
+      
+      console.log(`✅ Invoice ${invoiceId} deleted`);
+      res.json({ deleted: this.changes, message: 'Invoice deleted' });
+    });
+  });
+});
+
+// Create invoice with ID reuse
+app.post('/api/invoices', (req, res) => {
+  const { type, series, number, date, customer_id, truck_no, cash_credit, lines } = req.body;
+  
+  // Find next available ID
+  db.get(`
+    SELECT COALESCE(
+      (SELECT MIN(id + 1) FROM invoices WHERE (id + 1) NOT IN (SELECT id FROM invoices)),
+      (SELECT COALESCE(MAX(id), 0) + 1 FROM invoices)
+    ) as next_id
+  `, [], (err, row) => {
+    if (err) {
+      return res.status(500).json({ error: 'Failed to generate ID' });
+    }
+    
+    const nextId = row.next_id;
+    
+    // Rest of your existing create invoice logic but with specific ID
+    // Calculate totals
+    let taxableValue = 0;
+    let cgstAmount = 0;
+    let sgstAmount = 0;
+    let igstAmount = 0;
+    
+    const linesWithAmounts = lines.map(line => {
+      const amount = (line.qty || 0) * (line.rate || 0);
+      taxableValue += amount;
+      return { ...line, amount };
+    });
+    
+    db.get('SELECT state_code FROM customers WHERE id = ?', [customer_id], (err, customer) => {
+      const isInterState = customer && customer.state_code !== '24';
+      const gstRate = 0.18;
+      
+      if (isInterState) {
+        igstAmount = taxableValue * gstRate;
+      } else {
+        cgstAmount = taxableValue * (gstRate / 2);
+        sgstAmount = taxableValue * (gstRate / 2);
+      }
+      
+      const grandTotal = taxableValue + cgstAmount + sgstAmount + igstAmount;
+      
+      db.run(
+        `INSERT INTO invoices (id, type, series, number, date, customer_id, truck_no, cash_credit,
+                               taxable_value, cgst_amount, sgst_amount, igst_amount, grand_total)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [nextId, type, series, number, date, customer_id, truck_no, cash_credit,
+         taxableValue, cgstAmount, sgstAmount, igstAmount, grandTotal],
+        function(err) {
+          if (err) {
+            console.error('Create invoice error:', err);
+            return res.status(500).json({ error: err.message });
+          }
+          
+          const stmt = db.prepare(`
+            INSERT INTO invoice_lines (invoice_id, hsn_code, description, qty, unit, rate, amount)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+          `);
+          
+          linesWithAmounts.forEach(line => {
+            stmt.run(nextId, line.hsn_code, line.description, line.qty, line.unit, line.rate, line.amount);
+          });
+          
+          stmt.finalize(() => {
+            console.log(`✅ Invoice created with ID ${nextId}`);
+            res.json({ id: nextId, series, number, grand_total: grandTotal });
+          });
+        }
+      );
+    });
+  });
+});
+
+
 // API info
 app.get('/api', (req, res) => {
   res.json({
