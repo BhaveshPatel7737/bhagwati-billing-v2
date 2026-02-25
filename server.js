@@ -2,65 +2,72 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 
+// Supabase Admin Client (server-side)
+const { createClient } = require('@supabase/supabase-js');
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;  // Service role from Supabase
+const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+
 const app = express();
 const PORT = process.env.PORT || 4000;
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: 'https://bhagwati-billing.onrender.com',  // Secure your domain
+  credentials: true
+}));
 app.use(express.json());
 app.use(express.static(__dirname));
-// Protect API (before routes)
+
+// ✅ FIXED AUTH MIDDLEWARE (server-side Supabase)
 app.use('/api/*', async (req, res, next) => {
   try {
     const token = req.headers.authorization?.replace('Bearer ', '');
-    const { data: { user }, error } = await supabase.auth.getUser(token);
-    if (error || !user) return res.status(401).json({ error: 'Unauthorized' });
+    if (!token) return res.status(401).json({ error: 'No token provided' });
+    
+    // Verify JWT with Supabase Admin
+    const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
+    
+    if (error || !user) {
+      return res.status(401).json({ error: 'Invalid token' });
+    }
+    
+    console.log(`✅ Auth OK: ${user.email}`);
     next();
   } catch (e) {
+    console.error('Auth middleware error:', e);
     res.status(401).json({ error: 'Auth failed' });
   }
 });
 
+// Serve login page
+app.get('/login.html', (req, res) => res.sendFile(__dirname + '/login.html'));
+app.get('/login', (req, res) => res.redirect('/login.html'));
 
-// Serve frontend pages ✅
+// Serve frontend pages
 app.get('/', (req, res) => res.sendFile(__dirname + '/index.html'));
 app.get('/print.html', (req, res) => res.sendFile(__dirname + '/print.html'));
 
-// Import database for custom routes
-const { createClient } = require('@supabase/supabase-js');
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_ANON_KEY;
-const db = createClient(supabaseUrl, supabaseKey);
+// Database client (for custom routes)
+const supabaseUrlAnon = process.env.SUPABASE_URL;
+const supabaseKeyAnon = process.env.SUPABASE_ANON_KEY;
+const db = createClient(supabaseUrlAnon, supabaseKeyAnon);
 
-
-// ===== CUSTOM CUSTOMER ROUTES (BEFORE STANDARD ROUTES) =====
-
-// Clear all customers
-app.delete('/api/customers/clear-all', (req, res) => {
+// ===== CUSTOM CUSTOMER ROUTES =====
+app.delete('/api/customers/clear-all', async (req, res) => {
   console.log('🗑️ Clearing all customers...');
-  
-  db.serialize(() => {
-    // First clear invoices to avoid foreign key issues
-    db.run('DELETE FROM invoice_lines', (err) => {
-      if (err) console.error('Clear invoice_lines error:', err);
-    });
+  try {
+    // Clear in correct order (lines → invoices → customers)
+    await db.from('invoice_lines').delete().neq('id', 0);
+    await db.from('invoices').delete().neq('id', 0);
+    await db.from('customers').delete().neq('id', 0);
     
-    db.run('DELETE FROM invoices', (err) => {
-      if (err) console.error('Clear invoices error:', err);
-    });
-    
-    db.run('DELETE FROM customers', [], function(err) {
-      if (err) {
-        console.error('Clear customers error:', err);
-        return res.status(500).json({ error: err.message });
-      }
-      console.log(`✅ Cleared ${this.changes} customers`);
-      res.json({ 
-        message: 'All customers cleared',
-        deleted: this.changes 
-      });
-    });
-  });
+    console.log('✅ Cleared all data');
+    res.json({ message: 'All data cleared successfully' });
+  } catch (error) {
+    console.error('Clear error:', error);
+    res.status(500).json({ error: error.message });
+  }
 });
 
 app.post('/api/customers/bulk', async (req, res) => {
@@ -90,19 +97,13 @@ app.post('/api/customers/bulk', async (req, res) => {
       email: cust.email || ''
     }));
     
-    const { data, error } = await db
-      .from('customers')
-      .insert(formattedCustomers);
-    
+    const { data, error } = await db.from('customers').insert(formattedCustomers);
     if (error) throw error;
     
-    // ✅ FIX: Check data exists
-    const insertedCount = data ? data.length : 0;
-    
-    console.log(`✅ Bulk imported ${insertedCount} customers`);
+    console.log(`✅ Bulk imported ${data?.length || 0} customers`);
     res.json({ 
       success: true, 
-      inserted: insertedCount, 
+      inserted: data?.length || 0, 
       total: customers.length 
     });
   } catch (error) {
@@ -111,114 +112,11 @@ app.post('/api/customers/bulk', async (req, res) => {
   }
 });
 
-
-
-
-// Add new customer with ID reuse
-app.post('/api/customers', (req, res) => {
-  const { name, gstin, state, state_code, address, mobile, email } = req.body;
-
-  if (!name || !state || !state_code) {
-    return res.status(400).json({ error: 'Name, state, and state_code required' });
-  }
-
-  console.log(`➕ Creating customer: ${name}`);
-
-  // Find next available ID (fills gaps)
-  db.get(`
-    SELECT COALESCE(
-      (SELECT MIN(id + 1) FROM customers WHERE (id + 1) NOT IN (SELECT id FROM customers)),
-      (SELECT COALESCE(MAX(id), 0) + 1 FROM customers)
-    ) as next_id
-  `, [], (err, row) => {
-    if (err) {
-      console.error('Find ID error:', err);
-      return res.status(500).json({ error: 'Failed to generate ID' });
-    }
-    
-    const nextId = row.next_id;
-    
-    db.run(
-      `INSERT INTO customers (id, name, gstin, state, state_code, address, mobile, email)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [nextId, name, gstin, state, state_code, address, mobile, email],
-      function (err) {
-        if (err) {
-          console.error('Create customer error:', err);
-          return res.status(500).json({ error: err.message });
-        }
-        console.log(`✅ Customer created with ID ${nextId} (gap filled)`);
-        res.json({ id: nextId, message: 'Customer created' });
-      }
-    );
-  });
-});
-
-
-
-// Force delete customer and all their invoices
-app.delete('/api/customers/:id/force', (req, res) => {
-  const customerId = req.params.id;
-  
-  console.log(`💥 Force deleting customer ID: ${customerId} and all related invoices`);
-  
-  db.serialize(() => {
-    let linesDeleted = 0;
-    let invoicesDeleted = 0;
-    
-    // Delete invoice lines
-    db.run(
-      'DELETE FROM invoice_lines WHERE invoice_id IN (SELECT id FROM invoices WHERE customer_id = ?)', 
-      [customerId], 
-      function(err) {
-        if (err) console.error('Delete invoice lines error:', err);
-        linesDeleted = this.changes;
-        console.log(`  Deleted ${linesDeleted} invoice lines`);
-      }
-    );
-    
-    // Delete invoices
-    db.run(
-      'DELETE FROM invoices WHERE customer_id = ?', 
-      [customerId], 
-      function(err) {
-        if (err) console.error('Delete invoices error:', err);
-        invoicesDeleted = this.changes;
-        console.log(`  Deleted ${invoicesDeleted} invoices`);
-      }
-    );
-    
-    // Delete customer
-    db.run(
-      'DELETE FROM customers WHERE id = ?', 
-      [customerId], 
-      function(err) {
-        if (err) {
-          console.error('Delete customer error:', err);
-          return res.status(500).json({ error: err.message });
-        }
-        
-        if (this.changes === 0) {
-          return res.status(404).json({ error: 'Customer not found' });
-        }
-        
-        console.log(`✅ Force deleted customer ${customerId}, ${invoicesDeleted} invoices, ${linesDeleted} lines`);
-        res.json({ 
-          deleted: this.changes, 
-          invoicesDeleted: invoicesDeleted,
-          linesDeleted: linesDeleted,
-          message: 'Customer and all related data deleted' 
-        });
-      }
-    );
-  });
-});
-
-// ===== STANDARD ROUTES (AFTER CUSTOM ROUTES) =====
-
+// ===== STANDARD ROUTES =====
 app.use('/api/customers', require('./routes/customers'));
 app.use('/api/hsn', require('./routes/hsn'));
 
+// ✅ KEEP YOUR WORKING EDIT ROUTE
 app.get('/api/invoices/:id/edit', async (req, res) => {
   try {
     const { data: invoice, error: invError } = await db
@@ -244,31 +142,23 @@ app.get('/api/invoices/:id/edit', async (req, res) => {
       .eq('invoice_id', req.params.id);
     if (lineError) throw lineError;
     
-    res.json({ 
-      invoice: formattedInvoice, 
-      lines: lines || [] 
-    });
+    res.json({ invoice: formattedInvoice, lines: lines || [] });
   } catch (error) {
-    console.error('Direct edit error:', error);
+    console.error('Edit error:', error);
     res.status(500).json({ error: error.message });
   }
 });
 
-
 app.use('/api/invoices', require('./routes/invoices'));
 
-// Get invoices by type (CUSTOM ROUTE - UPDATE TO SUPABASE)
+// Invoices by type
 app.get('/api/invoices/type/:type', async (req, res) => {
   try {
     const { data, error } = await db
       .from('invoices')
-      .select(`
-        *,
-        customers(name, gstin, state)
-      `)
+      .select('*, customers(name, gstin, state)')
       .eq('type', req.params.type)
       .order('id', { ascending: false });
-    
     if (error) throw error;
     
     const rows = data.map(i => ({
@@ -278,43 +168,25 @@ app.get('/api/invoices/type/:type', async (req, res) => {
       customer_state: i.customers?.state || ''
     }));
     
-    res.json(rows || []);
+    res.json(rows);
   } catch (error) {
-    console.error('Get invoices by type error:', error);
+    console.error('Type error:', error);
     res.status(500).json({ error: error.message });
   }
 });
 
-
-// API info
+// API info (public)
 app.get('/api', (req, res) => {
   res.json({
-    name: 'Bhagwati Wood Process - GST Billing API',
-    version: '2.0.0',
+    name: 'Bhagwati Wood Process - GST Billing API v2.0 (Protected)',
     endpoints: {
-      customers: '/api/customers',
-      hsn: '/api/hsn',
-      invoices: '/api/invoices'
-    }
+      customers: '/api/customers* (AUTH)',
+      hsn: '/api/hsn* (AUTH)',
+      invoices: '/api/invoices* (AUTH)'
+    },
+    status: 'Protected - Login required'
   });
 });
 
-// Start server
-app.listen(PORT, () => {
-  console.log(`
-╔═══════════════════════════════════════════╗
-║   🏢 BHAGWATI WOOD PROCESS              ║
-║   📄 GST Billing System v2.0             ║
-║                                           ║
-║   🌐 Server: http://localhost:${PORT}      ║
-║   📊 API: http://localhost:${PORT}/api    ║
-╚═══════════════════════════════════════════╝
-  `);
-});
 
 module.exports = app;
-
-
-
-
-
