@@ -144,8 +144,14 @@ const App = {
         weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
       });
     }
-    document.getElementById('inv-date')?.valueAsDate = new Date();
+    
+    // FIXED: Safe assignment
+    const invDateEl = document.getElementById('inv-date');
+    if (invDateEl) {
+      invDateEl.valueAsDate = new Date();
+    }
   },
+
   
   // AUTHENTICATED API HELPERS
   async get(endpoint) {
