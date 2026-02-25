@@ -202,6 +202,61 @@ class InvoiceController {
       res.status(500).json({ error: error.message });
     }
   }
+
+  // Update invoice
+  static async update(req, res) {
+    const invoiceId = req.params.id;
+    const { type, series, number, date, customer_id, truck_no, cash_credit, lines } = req.body;
+    try {
+      // Delete old lines
+      await db.from('invoice_lines').delete().eq('invoice_id', invoiceId);
+      
+      // Calc totals (same as create)
+      let taxableValue = lines.reduce((sum, line) => sum + (line.qty * line.rate), 0);
+      const customer = await db.from('customers').select('state_code').eq('id', customer_id).single();
+      let cgstAmount = 0, sgstAmount = 0, igstAmount = 0;
+      if (type === 'TAX_INVOICE' && customer.data?.state_code === '24') {
+        cgstAmount = taxableValue * 0.09; sgstAmount = taxableValue * 0.09;
+      } else if (type === 'TAX_INVOICE') {
+        igstAmount = taxableValue * 0.18;
+      }
+      const grandTotal = Math.round(taxableValue + cgstAmount + sgstAmount + igstAmount);
+      
+      // Update invoice
+      const { error } = await db
+        .from('invoices')
+        .update({ type, series, number, date, customer_id, truck_no, cash_credit, 
+                  taxable_value: taxableValue, cgst_amount: cgstAmount, sgst_amount: sgstAmount, 
+                  igst_amount: igstAmount, grand_total: grandTotal })
+        .eq('id', invoiceId);
+      if (error) throw error;
+      
+      // Insert new lines
+      const linesData = lines.map(line => ({
+        invoice_id: invoiceId, hsn_code: line.hsn_code, description: line.description,
+        qty: line.qty, unit: line.unit, rate: line.rate, amount: line.qty * line.rate
+      }));
+      await db.from('invoice_lines').insert(linesData);
+      
+      res.json({ id: invoiceId, message: 'Invoice updated' });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  }
+
+  // Delete invoice
+  static async delete(req, res) {
+    try {
+      await db.from('invoice_lines').delete().eq('invoice_id', req.params.id);
+      const { error } = await db.from('invoices').delete().eq('id', req.params.id);
+      if (error) throw error;
+      res.json({ message: 'Invoice deleted' });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  }
+
+
 }
 
 module.exports = InvoiceController;
