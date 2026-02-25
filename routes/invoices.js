@@ -3,11 +3,13 @@ const router = express.Router();
 const InvoiceController = require('../controllers/invoiceController');
 const asyncHandler = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
 
+// Specific routes FIRST
+router.get('/next/:series', asyncHandler(InvoiceController.getNextNumber));
+router.get('/edit/:id', asyncHandler(InvoiceController.getById));  // Edit FIRST
+router.get('/:id', asyncHandler(InvoiceController.getById));       // Generic last
 router.get('/', asyncHandler(InvoiceController.getAll));
-router.get('/next/:series', asyncHandler(InvoiceController.getNextNumber));  
-router.get('/edit/:id', asyncHandler(InvoiceController.getById));  // For /2/edit
 router.post('/', asyncHandler(InvoiceController.create));
-router.put('/:id', asyncHandler(InvoiceController.update));   // Add
-router.delete('/:id', asyncHandler(InvoiceController.delete)); // Add
+router.put('/:id', asyncHandler(InvoiceController.update));
+router.delete('/:id', asyncHandler(InvoiceController.delete));
 
 module.exports = router;
