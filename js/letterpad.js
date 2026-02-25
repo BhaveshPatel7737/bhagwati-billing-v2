@@ -357,7 +357,7 @@ updateRowDOM(id) {
         margin:10mm;
       }
       .letterpad-container {
-        min-height: calc(297mm - 10mm);
+        min-height: calc(297mm - 30mm);
       }
     }
   </style>
