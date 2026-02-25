@@ -5,7 +5,7 @@ const asyncHandler = (fn) => (req, res, next) => Promise.resolve(fn(req, res, ne
 
 router.get('/', asyncHandler(InvoiceController.getAll));
 router.get('/next/:series', asyncHandler(InvoiceController.getNextNumber));  
-router.get('/:id', asyncHandler(InvoiceController.getById));  // For /2/edit
+router.get('/edit/:id', asyncHandler(InvoiceController.getById));  // For /2/edit
 router.post('/', asyncHandler(InvoiceController.create));
 router.put('/:id', asyncHandler(InvoiceController.update));   // Add
 router.delete('/:id', asyncHandler(InvoiceController.delete)); // Add
