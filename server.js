@@ -216,6 +216,16 @@ app.get('/api/invoices/:id/edit', async (req, res) => {
       .single();
     if (invError || !invoice) return res.status(404).json({ error: 'Invoice not found' });
     
+    const formattedInvoice = {
+      ...invoice,
+      customer_name: invoice.customers?.name || '',
+      customer_gstin: invoice.customers?.gstin || '',
+      customer_address: invoice.customers?.address || '',
+      customer_state: invoice.customers?.state || '',
+      customer_state_code: invoice.customers?.state_code || '',
+      customer_mobile: invoice.customers?.mobile || ''
+    };
+    
     const { data: lines, error: lineError } = await db
       .from('invoice_lines')
       .select('*')
@@ -223,7 +233,7 @@ app.get('/api/invoices/:id/edit', async (req, res) => {
     if (lineError) throw lineError;
     
     res.json({ 
-      invoice, 
+      invoice: formattedInvoice, 
       lines: lines || [] 
     });
   } catch (error) {
@@ -231,6 +241,7 @@ app.get('/api/invoices/:id/edit', async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+
 
 app.use('/api/invoices', require('./routes/invoices'));
 
