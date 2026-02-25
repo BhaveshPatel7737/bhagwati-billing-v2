@@ -235,19 +235,22 @@ updateRowDOM(id) {
       background: white;
       color: #000;
       padding: 5mm;  /* Match @page */
+      position: relative;  /* For absolute footer */
       height: 100vh;
     }
     
     .letterpad-container {
       display: flex;
       flex-direction: column;
-      height: 100%;
+      position: relative;
+      height: 100vh;
       min-height: 0;  /* Allow flex shrink */
     }
     
     .lp-content {
       flex: 1;
       min-height: 0;
+      padding-bottom: 45mm;  /* Footer space */
       overflow: hidden;  /* Clip table overflow */
     }
     
@@ -320,10 +323,15 @@ updateRowDOM(id) {
     
     /* Fixed footer - always visible */
     .lp-footer {
-      flex-shrink: 0;
-      padding-top: 8px;  /* Less space */
-      margin-top: auto;
-      font-size: 10px;
+      position: absolute;
+      bottom: 5mm;
+      left: 5mm;
+      right: 5mm;
+      padding: 12px 0;
+      text-align: right;
+      background: rgba(255,255,255,0.95);
+      border-top: 1px solid #ddd;
+      font-size: 11px;
     }
     
     @media print {
@@ -332,6 +340,10 @@ updateRowDOM(id) {
         overflow: visible;
       }
       body { padding: 5mm; }
+      .lp-footer {
+        position: fixed;
+        bottom: 5mm;
+      }
     }
   </style>
 
