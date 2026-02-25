@@ -212,8 +212,7 @@ function generateInvoiceHTML(invoice, lines) {
       text-align: center;
       font-weight: bold;
       font-size: 16px;
-      background: #1a472a;
-      color: white;
+      color: #1a472a;
       padding: 8px;
       border-radius: 4px;
     }
@@ -465,7 +464,7 @@ function generateInvoiceHTML(invoice, lines) {
         </div>
         <div class="invoice-box">
           <div class="box-title">📄 INVOICE DETAILS:</div>
-          <strong>Invoice No:</strong> ${invoice.series}/${invoice.number}<br>
+          <strong>Invoice No:</strong> ${invoice.number}<br>
           <strong>Date:</strong> ${new Date(invoice.date).toLocaleDateString('en-IN')}<br>
           <strong>Truck No:</strong> ${invoice.truck_no || 'N/A'}<br>
           <strong>Payment:</strong> ${invoice.cash_credit || 'Credit'}
