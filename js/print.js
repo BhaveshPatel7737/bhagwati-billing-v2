@@ -22,7 +22,7 @@ async function printInvoice(invoiceId) {
   try {
     App.showMessage('Generating PDF...', 'info');
     
-    const response = await fetch(`${API_BASE}/invoices/${invoiceId}`);
+    const response = await fetch(`${API_BASE}/invoices/${invoiceId}/edit`);
     const data = await response.json();
     
     // Create invisible iframe
@@ -598,7 +598,7 @@ function generateInvoiceHTML(invoice, lines) {
 // Print Envelope - COMP-10 Size (9.5" × 4.125")
 async function printEnvelope(invoiceId) {
   try {
-    const response = await fetch(`${API_BASE}/invoices/${invoiceId}`);
+    const response = await fetch(`${API_BASE}/invoices/${invoiceId}/edit`);
     const data = await response.json();
     
     // Create invisible iframe for printing
