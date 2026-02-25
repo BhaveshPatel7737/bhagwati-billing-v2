@@ -9,6 +9,18 @@ const PORT = process.env.PORT || 4000;
 app.use(cors());
 app.use(express.json());
 app.use(express.static(__dirname));
+// Protect API (before routes)
+app.use('/api/*', async (req, res, next) => {
+  try {
+    const token = req.headers.authorization?.replace('Bearer ', '');
+    const { data: { user }, error } = await supabase.auth.getUser(token);
+    if (error || !user) return res.status(401).json({ error: 'Unauthorized' });
+    next();
+  } catch (e) {
+    res.status(401).json({ error: 'Auth failed' });
+  }
+});
+
 
 // Serve frontend pages ✅
 app.get('/', (req, res) => res.sendFile(__dirname + '/index.html'));

@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Bhagwati Billing - Login</title>
+  <style>
+    body { font-family: Arial; max-width: 400px; margin: 100px auto; padding: 20px; }
+    input { width: 100%; padding: 12px; margin: 10px 0; box-sizing: border-box; }
+    button { width: 100%; padding: 12px; background: #1a472a; color: white; border: none; cursor: pointer; }
+    #message { margin: 10px 0; padding: 10px; }
+    .error { background: #fee; color: #c33; }
+    .success { background: #efe; color: #393; }
+  </style>
+</head>
+<body>
+  <h2>🏢 Bhagwati Wood Process</h2>
+  <p>GST Billing Login</p>
+  
+  <form id="loginForm">
+    <input type="email" id="email" placeholder="Email" required>
+    <input type="password" id="password" placeholder="Password" required>
+    <button type="submit">Login</button>
+  </form>
+  
+  <div id="message"></div>
+  
+  <script>
+    const SUPABASE_URL = 'https://lbthofzpyybmwwfekkkr.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxidGhvZnpweXlibXd3ZmVra2tyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE2NjY0MzQsImV4cCI6MjA4NzI0MjQzNH0.T8SMt7yeBGsWARPhguH91fHMGbN3QgMYmJ1KQRQX_WE';
+    
+    const { createClient } = supabase;
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+      
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      
+      if (error) {
+        showMessage(error.message, 'error');
+      } else {
+        showMessage('Login successful! Redirecting...', 'success');
+        localStorage.setItem('token', data.session.access_token);
+        window.location.href = '/';  // Main app
+      }
+    });
+    
+    function showMessage(text, type) {
+      const msg = document.getElementById('message');
+      msg.textContent = text;
+      msg.className = type;
+    }
+    
+    // Auto-redirect if logged in
+    const token = localStorage.getItem('token');
+    if (token) window.location.href = '/';
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</body>
+</html>
