@@ -11,7 +11,7 @@ const COMPANY_INFO = {
     name: "Indian Overseas Bank",
     account: "033733000000036 (C.A.)",
     ifsc: "IOBA0000337",
-    branch: "Gandhinagar"
+    branch: "KALOL (GANDHINAGAR)"
   },
   logo: "/logo.png" // Place your logo in public/logo.png
 };
