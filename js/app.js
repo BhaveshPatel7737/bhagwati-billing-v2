@@ -8,13 +8,13 @@ const App = {
   
   // Initialize application
   init() {
-    console.log('ðŸš€ Bhagwati Billing App Starting...');
+    console.log('🚀 Bhagwati Billing App Starting...');
     
     this.setupEventListeners();
     this.setCurrentDate();
     this.loadInitialData();
     
-    console.log('âœ… App Initialized');
+    console.log('✅ App Initialized');
   },
   
   // Setup all event listeners
@@ -171,3 +171,4 @@ const App = {
 document.addEventListener('DOMContentLoaded', () => {
   App.init();
 });
+
