@@ -1,5 +1,5 @@
 // API Configuration
-const API_BASE = 'https://bhagwati-billing.onrender.com/api';  // ✅ LIVE
+const API_BASE = 'https://bhagwati-billing.onrender.com/api';  // âœ… LIVE
 
 
 // Global App State
@@ -8,13 +8,13 @@ const App = {
   
   // Initialize application
   init() {
-    console.log('🚀 Bhagwati Billing App Starting...');
+    console.log('ðŸš€ Bhagwati Billing App Starting...');
     
     this.setupEventListeners();
     this.setCurrentDate();
     this.loadInitialData();
     
-    console.log('✅ App Initialized');
+    console.log('âœ… App Initialized');
   },
   
   // Setup all event listeners
@@ -114,15 +114,17 @@ const App = {
   // Set current date in header
   setCurrentDate() {
     const dateEl = document.getElementById('current-date');
-    if (dateEl) {
-      const now = new Date();
-      dateEl.textContent = now.toLocaleDateString('en-IN', {
-        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
-      });
-    }
-    document.getElementById('inv-date')?.valueAsDate = new Date();
+    const now = new Date();
+    dateEl.textContent = now.toLocaleDateString('en-IN', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+    
+    // Set invoice date to today
+    document.getElementById('inv-date').valueAsDate = now;
   },
-
   
   // API Helper - GET
   async get(endpoint) {
@@ -169,5 +171,3 @@ const App = {
 document.addEventListener('DOMContentLoaded', () => {
   App.init();
 });
-
-
