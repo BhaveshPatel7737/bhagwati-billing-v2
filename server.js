@@ -11,48 +11,31 @@ const PORT = process.env.PORT || 4000;
 app.use(cors());
 app.use(express.json());
 app.use(express.static(__dirname));
-
-// ----- SUPABASE DB CLIENT (for data) -----
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
-
-let db = null;
-if (supabaseUrl && supabaseAnonKey) {
-  db = createClient(supabaseUrl, supabaseAnonKey);
-  console.log('✅ Supabase DB connected');
-} else {
-  console.warn('⚠️ SUPABASE_URL or SUPABASE_ANON_KEY missing (Render env)');
-}
-
-// ----- LOGIN PAGE (inject env vars into window.*) -----
-app.get('/login.html', (req, res) => {
-  const loginPath = path.join(__dirname, 'login.html');
-  if (!fs.existsSync(loginPath)) {
-    return res.status(404).send('login.html not found in root folder');
+// Protect API (before routes)
+app.use('/api/*', async (req, res, next) => {
+  try {
+    const token = req.headers.authorization?.replace('Bearer ', '');
+    const { data: { user }, error } = await supabase.auth.getUser(token);
+    if (error || !user) return res.status(401).json({ error: 'Unauthorized' });
+    next();
+  } catch (e) {
+    res.status(401).json({ error: 'Auth failed' });
   }
-
-  // Read file and inject vars at end of body
-  fs.readFile(loginPath, 'utf8', (err, html) => {
-    if (err) return res.status(500).send('Error reading login.html');
-
-    const injectScript = `
-<script>
-window.SUPABASE_URL = "${supabaseUrl || ''}";
-window.SUPABASE_ANON_KEY = "${supabaseAnonKey || ''}";
-</script>
-</body>`;
-    const outHtml = html.replace('</body>', injectScript);
-    res.send(outHtml);
-  });
 });
 
-app.get('/login', (req, res) => res.redirect('/login.html'));
 
-// ----- FRONTEND PAGES -----
-app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
-app.get('/print.html', (req, res) => res.sendFile(path.join(__dirname, 'print.html')));
+// Serve frontend pages ✅
+app.get('/', (req, res) => res.sendFile(__dirname + '/index.html'));
+app.get('/print.html', (req, res) => res.sendFile(__dirname + '/print.html'));
 
-// ====== YOUR EXISTING API ROUTES (no auth enforced yet) ======
+// Import database for custom routes
+const { createClient } = require('@supabase/supabase-js');
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_ANON_KEY;
+const db = createClient(supabaseUrl, supabaseKey);
+
+
+// ===== CUSTOM CUSTOMER ROUTES (BEFORE STANDARD ROUTES) =====
 
 // Clear all customers
 app.delete('/api/customers/clear-all', async (req, res) => {
