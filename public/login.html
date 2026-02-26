@@ -1,61 +1,202 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Bhagwati Billing - Login</title>
+  <meta charset="UTF-8">
+  <title>Bhagwati Billing – Login</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
-    body { font-family: Arial; max-width: 400px; margin: 100px auto; padding: 20px; }
-    input { width: 100%; padding: 12px; margin: 10px 0; box-sizing: border-box; }
-    button { width: 100%; padding: 12px; background: #1a472a; color: white; border: none; cursor: pointer; }
-    #message { margin: 10px 0; padding: 10px; }
-    .error { background: #fee; color: #c33; }
-    .success { background: #efe; color: #393; }
+    * { box-sizing: border-box; }
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #f5f7fa;
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .card {
+      background: #fff;
+      width: 100%;
+      max-width: 360px;
+      border-radius: 12px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+      padding: 24px 24px 28px;
+    }
+    .logo {
+      text-align: center;
+      margin-bottom: 16px;
+    }
+    .logo img {
+      max-width: 80px;
+      height: auto;
+      display: block;
+      margin: 0 auto 8px;
+    }
+    h1 {
+      font-size: 20px;
+      margin: 0;
+      text-align: center;
+      color: #1a472a;
+    }
+    p.sub {
+      margin: 6px 0 18px;
+      font-size: 13px;
+      text-align: center;
+      color: #666;
+    }
+    label {
+      display: block;
+      font-size: 13px;
+      margin-bottom: 4px;
+      color: #333;
+    }
+    input {
+      width: 100%;
+      padding: 10px 11px;
+      margin-bottom: 12px;
+      border-radius: 6px;
+      border: 1px solid #ccd2dd;
+      font-size: 14px;
+    }
+    input:focus {
+      outline: none;
+      border-color: #1a472a;
+      box-shadow: 0 0 0 1px rgba(26,71,42,0.1);
+    }
+    button {
+      width: 100%;
+      padding: 10px 12px;
+      border-radius: 6px;
+      border: none;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      background: #1a472a;
+      color: #fff;
+      margin-top: 4px;
+    }
+    button:disabled {
+      opacity: 0.6;
+      cursor: default;
+    }
+    #message {
+      margin-top: 10px;
+      font-size: 13px;
+      padding: 8px 10px;
+      border-radius: 6px;
+      display: none;
+    }
+    #message.error {
+      display: block;
+      background: #fee;
+      color: #b3261e;
+      border: 1px solid #f5c2c0;
+    }
+    #message.success {
+      display: block;
+      background: #e6f4ea;
+      color: #1e7e34;
+      border: 1px solid #b4dfc2;
+    }
+    .hint {
+      font-size: 11px;
+      color: #888;
+      margin-top: 10px;
+      text-align: center;
+    }
   </style>
 </head>
 <body>
-  <h2>🏢 Bhagwati Wood Process</h2>
-  <p>GST Billing Login</p>
-  
-  <form id="loginForm">
-    <input type="email" id="email" placeholder="Email" required>
-    <input type="password" id="password" placeholder="Password" required>
-    <button type="submit">Login</button>
-  </form>
-  
-  <div id="message"></div>
-  
+  <div class="card">
+    <div class="logo">
+      <img src="logo.png" alt="Bhagwati Logo" onerror="this.style.display='none'">
+    </div>
+    <h1>Bhagwati Billing</h1>
+    <p class="sub">Sign in to manage invoices</p>
+
+    <form id="login-form">
+      <label for="email">Email</label>
+      <input id="email" type="email" autocomplete="email" required>
+
+      <label for="password">Password</label>
+      <input id="password" type="password" autocomplete="current-password" required>
+
+      <button type="submit" id="login-btn">Login</button>
+    </form>
+
+    <div id="message"></div>
+    <div class="hint">
+      Use an existing Supabase auth user (Email provider) for this project.
+    </div>
+  </div>
+
+  <!-- Supabase CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
-    const SUPABASE_URL = 'https://lbthofzpyybmwwfekkkr.supabase.co';
-    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxidGhvZnpweXlibXd3ZmVra2tyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE2NjY0MzQsImV4cCI6MjA4NzI0MjQzNH0.T8SMt7yeBGsWARPhguH91fHMGbN3QgMYmJ1KQRQX_WE';
-    
-    const { createClient } = supabase;
-    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    
-    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+    // These two are injected from server.js into the HTML
+    const SUPABASE_URL = window.SUPABASE_URL;
+    const SUPABASE_ANON_KEY = window.SUPABASE_ANON_KEY;
+
+    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    const form = document.getElementById('login-form');
+    const msg = document.getElementById('message');
+    const btn = document.getElementById('login-btn');
+
+    function showMessage(text, type) {
+      msg.textContent = text;
+      msg.className = type ? type : '';
+      msg.id = 'message';
+      msg.classList.add(type);
+    }
+
+    form.addEventListener('submit', async (e) => {
       e.preventDefault();
-      const email = document.getElementById('email').value;
+      msg.style.display = 'none';
+
+      const email = document.getElementById('email').value.trim();
       const password = document.getElementById('password').value;
-      
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-      
+
+      if (!email || !password) {
+        showMessage('Email and password are required', 'error');
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = 'Signing in...';
+
+      const { data, error } = await supabaseClient.auth.signInWithPassword({
+        email,
+        password
+      });
+
       if (error) {
         showMessage(error.message, 'error');
-      } else {
-        showMessage('Login successful! Redirecting...', 'success');
-        localStorage.setItem('token', data.session.access_token);
-        window.location.href = '/';  // Main app
+        btn.disabled = false;
+        btn.textContent = 'Login';
+        return;
       }
+
+      // Store access token so app.js can send it in Authorization header
+      const token = data.session?.access_token;
+      if (token) {
+        localStorage.setItem('bhagwati_token', token);
+      }
+
+      showMessage('Login successful! Redirecting...', 'success');
+      setTimeout(() => {
+        window.location.href = '/';
+      }, 800);
     });
-    
-    function showMessage(text, type) {
-      const msg = document.getElementById('message');
-      msg.textContent = text;
-      msg.className = type;
-    }
-    
-    // Auto-redirect if logged in
-    const token = localStorage.getItem('token');
-    if (token) window.location.href = '/';
+
+    // If already logged in, redirect
+    (async () => {
+      const { data } = await supabaseClient.auth.getSession();
+      if (data.session) {
+        window.location.href = '/';
+      }
+    })();
   </script>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </body>
 </html>
