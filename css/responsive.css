@@ -1,0 +1,475 @@
+/* ========== RESPONSIVE DESIGN FOR ALL DEVICES ========== */
+
+/* ========== TABLET (768px - 1024px) ========== */
+@media (max-width: 1024px) {
+  .app-header h1 {
+    font-size: 1.5rem;
+  }
+  
+  .header-logo {
+    width: 50px;
+    height: 50px;
+  }
+  
+  .main-content {
+    padding: 0 1.5rem;
+    margin: 1.5rem auto;
+  }
+  
+  .invoice-line {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.6rem;
+  }
+  
+  .section-header {
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+  
+  .section-header h2 {
+    font-size: 1.3rem;
+  }
+}
+
+/* ========== MOBILE LARGE (481px - 768px) ========== */
+@media (max-width: 768px) {
+  /* Header adjustments */
+  .app-header {
+    padding: 1rem;
+  }
+  
+  .header-content {
+    flex-direction: column;
+    gap: 1rem;
+    text-align: center;
+  }
+  
+  .logo-title {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  
+  .app-header h1 {
+    font-size: 1.3rem;
+  }
+  
+  .subtitle {
+    font-size: 0.8rem;
+  }
+  
+  .header-logo {
+    width: 45px;
+    height: 45px;
+  }
+  
+  .header-info {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+  
+  /* Navigation tabs */
+  .nav-tabs {
+    padding: 0 0.5rem;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  .tab-button {
+    padding: 0.8rem 1rem;
+    font-size: 0.9rem;
+  }
+  
+  /* Main content */
+  .main-content {
+    padding: 0 1rem;
+    margin: 1rem auto;
+  }
+  
+  /* Section headers */
+  .section-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+  
+  .section-header h2 {
+    font-size: 1.2rem;
+  }
+  
+  .section-header > div {
+    width: 100%;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+  
+  /* Forms */
+  .form-row {
+    grid-template-columns: 1fr;
+  }
+  
+  .data-form {
+    padding: 1rem;
+  }
+  
+  .form-container {
+    padding: 1rem;
+  }
+  
+  .form-actions {
+    flex-direction: column;
+  }
+  
+  .form-actions .btn {
+    width: 100%;
+  }
+  
+  /* Buttons */
+  .btn {
+    padding: 0.7rem 1rem;
+    font-size: 0.9rem;
+  }
+  
+  .btn-lg {
+    padding: 0.9rem 1.5rem;
+    font-size: 1rem;
+  }
+  
+  /* Tables - horizontal scroll */
+  .table-container {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  .data-table {
+    min-width: 600px;
+  }
+  
+  .data-table th,
+  .data-table td {
+    padding: 0.7rem 0.5rem;
+    font-size: 0.85rem;
+  }
+  
+  /* Invoice lines */
+  .invoice-line {
+    grid-template-columns: 1fr;
+    gap: 0.5rem;
+    padding: 0.8rem;
+  }
+  
+  .invoice-lines-section {
+    padding: 1rem;
+  }
+  
+  /* Invoice totals */
+  .invoice-totals {
+    padding: 1rem;
+  }
+  
+  .totals-row {
+    font-size: 0.9rem;
+  }
+  
+  .totals-row.grand-total {
+    font-size: 1.1rem;
+  }
+  
+  /* Modal */
+  .modal-dialog {
+    width: 95%;
+    max-height: 85vh;
+  }
+  
+  .modal-header h3 {
+    font-size: 1.1rem;
+  }
+  
+  .modal-body {
+    padding: 1rem;
+  }
+  
+  .modal-footer {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  
+  .modal-footer .btn {
+    width: 100%;
+  }
+  
+  /* Invoice subtabs */
+  .invoice-subtab {
+    padding: 10px 16px;
+    font-size: 0.85rem;
+  }
+  
+  /* Footer */
+  .app-footer {
+    padding: 1.5rem 1rem;
+    font-size: 0.9rem;
+  }
+}
+
+/* ========== MOBILE SMALL (320px - 480px) ========== */
+@media (max-width: 480px) {
+  /* Header */
+  .app-header {
+    padding: 0.8rem 0.5rem;
+  }
+  
+  .app-header h1 {
+    font-size: 1.1rem;
+  }
+  
+  .subtitle {
+    font-size: 0.75rem;
+  }
+  
+  .header-logo {
+    width: 40px;
+    height: 40px;
+  }
+  
+  /* Navigation */
+  .tab-button {
+    padding: 0.7rem 0.8rem;
+    font-size: 0.85rem;
+  }
+  
+  /* Main content */
+  .main-content {
+    padding: 0 0.5rem;
+    margin: 0.8rem auto;
+  }
+  
+  /* Section headers */
+  .section-header h2 {
+    font-size: 1.1rem;
+  }
+  
+  .section-header > div {
+    flex-direction: column;
+  }
+  
+  .section-header .btn {
+    width: 100%;
+  }
+  
+  /* Forms */
+  .data-form,
+  .form-container {
+    padding: 0.8rem;
+  }
+  
+  .form-group label {
+    font-size: 0.85rem;
+  }
+  
+  .form-group input,
+  .form-group select,
+  .form-group textarea {
+    padding: 0.6rem;
+    font-size: 0.9rem;
+  }
+  
+  /* Buttons */
+  .btn {
+    padding: 0.6rem 0.8rem;
+    font-size: 0.85rem;
+  }
+  
+  .btn-lg {
+    padding: 0.8rem 1.2rem;
+    font-size: 0.95rem;
+  }
+  
+  .btn-sm {
+    padding: 0.4rem 0.6rem;
+    font-size: 0.8rem;
+  }
+  
+  /* Tables */
+  .data-table {
+    min-width: 500px;
+    font-size: 0.8rem;
+  }
+  
+  .data-table th,
+  .data-table td {
+    padding: 0.6rem 0.4rem;
+    font-size: 0.8rem;
+  }
+  
+  /* Invoice lines */
+  .invoice-line {
+    padding: 0.6rem;
+  }
+  
+  .invoice-line input,
+  .invoice-line select {
+    font-size: 0.85rem;
+  }
+  
+  .line-amount {
+    font-size: 0.9rem;
+    padding: 0.5rem;
+  }
+  
+  /* Invoice totals */
+  .totals-row {
+    font-size: 0.85rem;
+    padding: 0.5rem 0;
+  }
+  
+  .totals-row.grand-total {
+    font-size: 1rem;
+  }
+  
+  /* Modal */
+  .modal-dialog {
+    width: 98%;
+    max-height: 90vh;
+  }
+  
+  .modal-header {
+    padding: 0.8rem 1rem;
+  }
+  
+  .modal-header h3 {
+    font-size: 1rem;
+  }
+  
+  .modal-body {
+    padding: 0.8rem;
+  }
+  
+  .modal-footer {
+    padding: 0.8rem 1rem;
+  }
+  
+  /* Message bar */
+  .message-bar {
+    padding: 0.8rem 1rem;
+    font-size: 0.9rem;
+  }
+  
+  /* Invoice subtabs */
+  .invoice-subtab {
+    padding: 8px 12px;
+    font-size: 0.8rem;
+  }
+  
+  /* Footer */
+  .app-footer {
+    padding: 1rem 0.5rem;
+    font-size: 0.85rem;
+  }
+}
+
+/* ========== EXTRA SMALL DEVICES (< 320px) ========== */
+@media (max-width: 320px) {
+  .app-header h1 {
+    font-size: 1rem;
+  }
+  
+  .tab-button {
+    padding: 0.6rem;
+    font-size: 0.8rem;
+  }
+  
+  .btn {
+    font-size: 0.8rem;
+  }
+}
+
+/* ========== LANDSCAPE MODE ON MOBILE ========== */
+@media (max-height: 500px) and (orientation: landscape) {
+  .app-header {
+    padding: 0.5rem 1rem;
+  }
+  
+  .header-logo {
+    width: 35px;
+    height: 35px;
+  }
+  
+  .main-content {
+    margin: 0.5rem auto;
+  }
+  
+  .modal-dialog {
+    max-height: 95vh;
+  }
+}
+
+/* ========== TOUCH OPTIMIZATIONS ========== */
+@media (hover: none) and (pointer: coarse) {
+  /* Larger touch targets for mobile */
+  .btn {
+    min-height: 44px;
+  }
+  
+  .tab-button {
+    min-height: 44px;
+  }
+  
+  .form-group input,
+  .form-group select,
+  .form-group textarea {
+    min-height: 44px;
+  }
+  
+  /* Remove hover effects on touch devices */
+  .btn:hover,
+  .tab-button:hover,
+  .data-table tbody tr:hover {
+    transform: none;
+  }
+}
+
+/* ========== LARGE DESKTOP (> 1400px) ========== */
+@media (min-width: 1400px) {
+  .main-content {
+    max-width: 1600px;
+  }
+  
+  .app-header h1 {
+    font-size: 2rem;
+  }
+  
+  .section-header h2 {
+    font-size: 1.6rem;
+  }
+}
+
+/* ========== PRINT STYLES ========== */
+@media print {
+  .app-header,
+  .nav-tabs,
+  .app-footer,
+  .btn,
+  .section-header > div {
+    display: none !important;
+  }
+  
+  body {
+    background: white;
+  }
+  
+  .main-content {
+    margin: 0;
+    padding: 0;
+  }
+  
+  .data-table {
+    border: 1px solid #000;
+  }
+  
+  .data-table th,
+  .data-table td {
+    border: 1px solid #000;
+  }
+}
