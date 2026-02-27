@@ -15,6 +15,14 @@ app.get('/', (req, res) => res.sendFile(__dirname + '/index.html'));
 app.get('/login.html', (req, res) => res.sendFile(__dirname + '/login.html'));
 app.get('/print.html', (req, res) => res.sendFile(__dirname + '/print.html'));
 
+// Expose Supabase config to frontend (only public credentials)
+app.get('/api/config', (req, res) => {
+  res.json({
+    supabaseUrl: process.env.SUPABASE_URL,
+    supabaseKey: process.env.SUPABASE_ANON_KEY
+  });
+});
+
 // Import database for custom routes
 const { createClient } = require('@supabase/supabase-js');
 const supabaseUrl = process.env.SUPABASE_URL;

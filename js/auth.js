@@ -1,15 +1,34 @@
 // Initialize Supabase client
-const supabaseUrl = window.location.origin.includes('localhost') 
-    ? 'YOUR_SUPABASE_URL' 
-    : 'YOUR_SUPABASE_URL';
-const supabaseKey = window.location.origin.includes('localhost')
-    ? 'YOUR_SUPABASE_ANON_KEY'
-    : 'YOUR_SUPABASE_ANON_KEY';
+// Note: These values are fetched from your backend environment variables
+let supabaseUrl = '';
+let supabaseKey = '';
+let supabase = null;
 
-const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+// Fetch Supabase config from backend
+async function initSupabase() {
+    try {
+        const response = await fetch('/api/config');
+        const config = await response.json();
+        supabaseUrl = config.supabaseUrl;
+        supabaseKey = config.supabaseKey;
+        supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+        return true;
+    } catch (error) {
+        console.error('Failed to initialize Supabase:', error);
+        return false;
+    }
+}
 
 // Check if user is already logged in
 async function checkAuth() {
+    if (!supabase) {
+        const initialized = await initSupabase();
+        if (!initialized) {
+            console.error('Supabase initialization failed');
+            return;
+        }
+    }
+    
     const { data: { session } } = await supabase.auth.getSession();
     
     if (session) {
@@ -29,6 +48,10 @@ async function checkAuth() {
 if (document.getElementById('loginForm')) {
     document.getElementById('loginForm').addEventListener('submit', async (e) => {
         e.preventDefault();
+        
+        if (!supabase) {
+            await initSupabase();
+        }
         
         const email = document.getElementById('email').value;
         const password = document.getElementById('password').value;
@@ -62,9 +85,11 @@ if (document.getElementById('loginForm')) {
 
 // Logout function
 function logout() {
-    supabase.auth.signOut().then(() => {
-        window.location.href = '/login.html';
-    });
+    if (supabase) {
+        supabase.auth.signOut().then(() => {
+            window.location.href = '/login.html';
+        });
+    }
 }
 
 // Run auth check on page load
