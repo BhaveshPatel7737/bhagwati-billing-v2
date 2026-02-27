@@ -12,6 +12,7 @@ app.use(express.static(__dirname));
 
 // Serve frontend pages ✅
 app.get('/', (req, res) => res.sendFile(__dirname + '/index.html'));
+app.get('/login.html', (req, res) => res.sendFile(__dirname + '/login.html'));
 app.get('/print.html', (req, res) => res.sendFile(__dirname + '/print.html'));
 
 // Import database for custom routes
@@ -300,4 +301,4 @@ app.listen(PORT, () => {
   `);
 });
 
-module.exports = app; 
+module.exports = app;
