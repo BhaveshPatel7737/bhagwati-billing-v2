@@ -2,7 +2,7 @@
 // Note: These values are fetched from your backend environment variables
 let supabaseUrl = '';
 let supabaseKey = '';
-let supabase = null;
+let supabaseClient = null;
 
 // Fetch Supabase config from backend
 async function initSupabase() {
@@ -11,7 +11,7 @@ async function initSupabase() {
         const config = await response.json();
         supabaseUrl = config.supabaseUrl;
         supabaseKey = config.supabaseKey;
-        supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+        supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
         return true;
     } catch (error) {
         console.error('Failed to initialize Supabase:', error);
@@ -21,7 +21,7 @@ async function initSupabase() {
 
 // Check if user is already logged in
 async function checkAuth() {
-    if (!supabase) {
+    if (!supabaseClient) {
         const initialized = await initSupabase();
         if (!initialized) {
             console.error('Supabase initialization failed');
@@ -29,7 +29,7 @@ async function checkAuth() {
         }
     }
     
-    const { data: { session } } = await supabase.auth.getSession();
+    const { data: { session } } = await supabaseClient.auth.getSession();
     
     if (session) {
         // User is logged in
@@ -49,7 +49,7 @@ if (document.getElementById('loginForm')) {
     document.getElementById('loginForm').addEventListener('submit', async (e) => {
         e.preventDefault();
         
-        if (!supabase) {
+        if (!supabaseClient) {
             await initSupabase();
         }
         
@@ -64,7 +64,7 @@ if (document.getElementById('loginForm')) {
         errorMsg.style.display = 'none';
         
         try {
-            const { data, error } = await supabase.auth.signInWithPassword({
+            const { data, error } = await supabaseClient.auth.signInWithPassword({
                 email: email,
                 password: password,
             });
@@ -83,10 +83,10 @@ if (document.getElementById('loginForm')) {
     });
 }
 
-// Logout function
-function logout() {
-    if (supabase) {
-        supabase.auth.signOut().then(() => {
+// Logout function (exposed globally for logout button)
+window.logout = function() {
+    if (supabaseClient) {
+        supabaseClient.auth.signOut().then(() => {
             window.location.href = '/login.html';
         });
     }
