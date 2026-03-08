@@ -1,0 +1,15 @@
+name: Supabase Keep Alive
+
+on:
+  schedule:
+    - cron: "0 3 * * 1,4"   # Runs every Monday and Thursday at 03:00 UTC
+  workflow_dispatch:        # Allow manual run from the Actions tab
+
+jobs:
+  ping-app:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Call Render app to keep Supabase alive
+        run: |
+          curl -sS https://bhagwati-billing.onrender.com/api || exit 1
