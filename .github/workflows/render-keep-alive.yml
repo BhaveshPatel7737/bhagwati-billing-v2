@@ -1,0 +1,16 @@
+name: Render Keep Alive
+
+on:
+  schedule:
+    # Every 15 minutes between 04:00–18:00 UTC (tweak as you like)
+    - cron: "*/15 4-18 * * *"
+  workflow_dispatch:
+
+jobs:
+  ping-render:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Ping Render app
+        run: |
+          curl -sS https://bhagwati-billing.onrender.com/ || exit 1
