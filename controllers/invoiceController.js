@@ -77,23 +77,31 @@ class InvoiceController {
   }
 
   // ✅ HELPER: Calculate GST per line using HSN rate from DB
+  // Table: 'hsn', Columns: hsn_code, gst_rate_percent, exempt_for_bos
   static async calcTotalsFromLines(lines, customer, type) {
-    // Fetch all HSN codes needed
+    // Collect unique HSN codes from lines
     const hsnCodes = [...new Set(lines.map(l => l.hsn_code).filter(Boolean))];
     
     let hsnMap = {};
     if (hsnCodes.length > 0) {
-      const { data: hsnRows } = await db
-        .from('hsn_codes')
-        .select('code, gst_rate, is_exempt')
-        .in('code', hsnCodes);
+      const { data: hsnRows, error: hsnError } = await db
+        .from('hsn')                          // ✅ correct table name
+        .select('hsn_code, gst_rate_percent, exempt_for_bos')  // ✅ correct columns
+        .in('hsn_code', hsnCodes);            // ✅ correct column
       
+      if (hsnError) {
+        console.error('HSN lookup error:', hsnError.message);
+      }
+
       (hsnRows || []).forEach(h => {
-        hsnMap[h.code] = { rate: parseFloat(h.gst_rate) || 0, exempt: h.is_exempt };
+        hsnMap[h.hsn_code] = {
+          rate: parseFloat(h.gst_rate_percent) || 0,  // ✅ correct column
+          exempt: h.exempt_for_bos || false            // ✅ correct column
+        };
       });
     }
 
-    const isIntraState = customer.state_code === '24'; // Gujarat
+    const isIntraState = customer.state_code === '24'; // Gujarat = intra-state
     const isTaxInvoice = type === 'TAX_INVOICE';
 
     let taxableValue = 0;
@@ -106,18 +114,18 @@ class InvoiceController {
       taxableValue += lineAmount;
 
       const hsnInfo = hsnMap[line.hsn_code] || { rate: 0, exempt: false };
-      const gstRate = hsnInfo.rate; // e.g. 5, 12, 18
+      const gstRate = hsnInfo.rate;   // e.g. 5, 12, 18
       const isExempt = hsnInfo.exempt;
 
       let lineCgst = 0, lineSgst = 0, lineIgst = 0;
 
       if (isTaxInvoice && !isExempt && gstRate > 0) {
         if (isIntraState) {
-          // Split equally: CGST + SGST
+          // Intra-state Gujarat: CGST + SGST (each = gstRate/2)
           lineCgst = lineAmount * (gstRate / 2) / 100;
           lineSgst = lineAmount * (gstRate / 2) / 100;
         } else {
-          // Interstate: IGST
+          // Inter-state: IGST = full gstRate
           lineIgst = lineAmount * gstRate / 100;
         }
       }
@@ -171,7 +179,7 @@ class InvoiceController {
         return res.status(400).json({ error: 'Customer not found' });
       }
 
-      // ✅ Calculate GST using HSN rates from DB
+      // ✅ Calculate GST using correct HSN rates from DB
       const totals = await InvoiceController.calcTotalsFromLines(lines, customer, type);
 
       // Use provided number or generate next
@@ -187,7 +195,7 @@ class InvoiceController {
         finalNumber = (Number(maxRow?.[0]?.number) || 0) + 1;
       }
 
-      // Create invoice
+      // Create invoice record
       const { data: invoiceData, error: invoiceError } = await db
         .from('invoices')
         .insert([{
@@ -206,7 +214,7 @@ class InvoiceController {
       if (invoiceError) throw invoiceError;
       const invoiceId = invoiceData.id;
 
-      // Save lines with GST breakdown
+      // Save invoice lines
       const linesData = totals.processedLines.map(line => ({
         invoice_id: invoiceId,
         hsn_code: line.hsn_code,
@@ -214,11 +222,7 @@ class InvoiceController {
         qty: line.qty,
         unit: line.unit,
         rate: line.rate,
-        amount: line.amount,
-        gst_rate: line.gst_rate,
-        cgst: line.cgst,
-        sgst: line.sgst,
-        igst: line.igst
+        amount: line.amount
       }));
 
       const { error: linesError } = await db
@@ -227,7 +231,7 @@ class InvoiceController {
       
       if (linesError) throw linesError;
 
-      console.log(`✅ Invoice created: ID ${invoiceId}, Total: ${totals.grandTotal}`);
+      console.log(`✅ Invoice created: ID ${invoiceId}, GST calculated from HSN rates`);
       res.json({
         id: invoiceId,
         series,
@@ -260,10 +264,10 @@ class InvoiceController {
         .eq('id', customer_id)
         .single();
 
-      // ✅ Calculate GST using HSN rates from DB
+      // ✅ Calculate GST using correct HSN rates from DB
       const totals = await InvoiceController.calcTotalsFromLines(lines, customer, type);
 
-      // Update invoice
+      // Update invoice record
       const { error } = await db
         .from('invoices')
         .update({
@@ -278,7 +282,7 @@ class InvoiceController {
         .eq('id', invoiceId);
       if (error) throw error;
 
-      // Insert new lines
+      // Insert updated lines
       const linesData = totals.processedLines.map(line => ({
         invoice_id: invoiceId,
         hsn_code: line.hsn_code,
@@ -286,11 +290,7 @@ class InvoiceController {
         qty: line.qty,
         unit: line.unit,
         rate: line.rate,
-        amount: line.amount,
-        gst_rate: line.gst_rate,
-        cgst: line.cgst,
-        sgst: line.sgst,
-        igst: line.igst
+        amount: line.amount
       }));
       await db.from('invoice_lines').insert(linesData);
 
