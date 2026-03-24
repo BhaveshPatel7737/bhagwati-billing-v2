@@ -21,7 +21,6 @@ class InvoiceController {
       
       if (error) throw error;
       
-      // Format response to match old structure
       const rows = data.map(invoice => ({
         ...invoice,
         customer_name: invoice.customers?.name || '',
@@ -38,48 +37,21 @@ class InvoiceController {
     }
   }
 
-  // Get single invoice with lines
-  static async getById(req, res) {
+  // Get invoices by type
+  static async getByType(req, res) {
     try {
-      const { data: invoiceData, error: invoiceError } = await db
+      const { data, error } = await db
         .from('invoices')
-        .select(`
-          *,
-          customers (
-            name,
-            gstin,
-            address,
-            state,
-            state_code,
-            mobile
-          )
-        `)
-        .eq('id', req.params.id)
-        .single();
-      
-      if (invoiceError) throw invoiceError;
-      if (!invoiceData) return res.status(404).json({ error: 'Invoice not found' });
-
-      const { data: lines, error: linesError } = await db
-        .from('invoice_lines')
-        .select('*')
-        .eq('invoice_id', req.params.id);
-      
-      if (linesError) throw linesError;
-      
-      const invoice = {
-        ...invoiceData,
-        customer_name: invoiceData.customers?.name || '',
-        customer_gstin: invoiceData.customers?.gstin || '',
-        customer_address: invoiceData.customers?.address || '',
-        customer_state: invoiceData.customers?.state || '',
-        customer_state_code: invoiceData.customers?.state_code || '',
-        customer_mobile: invoiceData.customers?.mobile || ''
-      };
-      
-      res.json({ invoice, lines: lines || [] });
+        .select(`*, customers(name, gstin, address, state, state_code)`)
+        .eq('type', req.params.type)
+        .order('id', { ascending: false });
+      if (error) throw error;
+      const rows = (data || []).map(inv => ({
+        ...inv,
+        customer_name: inv.customers?.name || ''
+      }));
+      res.json(rows);
     } catch (error) {
-      console.error('Get invoice error:', error);
       res.status(500).json({ error: error.message });
     }
   }
@@ -104,7 +76,82 @@ class InvoiceController {
     }
   }
 
-  // Create invoice (simplified - full GST calc preserved)
+  // ✅ HELPER: Calculate GST per line using HSN rate from DB
+  static async calcTotalsFromLines(lines, customer, type) {
+    // Fetch all HSN codes needed
+    const hsnCodes = [...new Set(lines.map(l => l.hsn_code).filter(Boolean))];
+    
+    let hsnMap = {};
+    if (hsnCodes.length > 0) {
+      const { data: hsnRows } = await db
+        .from('hsn_codes')
+        .select('code, gst_rate, is_exempt')
+        .in('code', hsnCodes);
+      
+      (hsnRows || []).forEach(h => {
+        hsnMap[h.code] = { rate: parseFloat(h.gst_rate) || 0, exempt: h.is_exempt };
+      });
+    }
+
+    const isIntraState = customer.state_code === '24'; // Gujarat
+    const isTaxInvoice = type === 'TAX_INVOICE';
+
+    let taxableValue = 0;
+    let cgstAmount = 0;
+    let sgstAmount = 0;
+    let igstAmount = 0;
+
+    const processedLines = lines.map(line => {
+      const lineAmount = (parseFloat(line.qty) || 0) * (parseFloat(line.rate) || 0);
+      taxableValue += lineAmount;
+
+      const hsnInfo = hsnMap[line.hsn_code] || { rate: 0, exempt: false };
+      const gstRate = hsnInfo.rate; // e.g. 5, 12, 18
+      const isExempt = hsnInfo.exempt;
+
+      let lineCgst = 0, lineSgst = 0, lineIgst = 0;
+
+      if (isTaxInvoice && !isExempt && gstRate > 0) {
+        if (isIntraState) {
+          // Split equally: CGST + SGST
+          lineCgst = lineAmount * (gstRate / 2) / 100;
+          lineSgst = lineAmount * (gstRate / 2) / 100;
+        } else {
+          // Interstate: IGST
+          lineIgst = lineAmount * gstRate / 100;
+        }
+      }
+
+      cgstAmount += lineCgst;
+      sgstAmount += lineSgst;
+      igstAmount += lineIgst;
+
+      return {
+        ...line,
+        amount: lineAmount,
+        gst_rate: gstRate,
+        cgst: lineCgst,
+        sgst: lineSgst,
+        igst: lineIgst
+      };
+    });
+
+    const exactTotal = taxableValue + cgstAmount + sgstAmount + igstAmount;
+    const roundedTotal = Math.round(exactTotal);
+    const roundOff = parseFloat((roundedTotal - exactTotal).toFixed(2));
+
+    return {
+      processedLines,
+      taxableValue: parseFloat(taxableValue.toFixed(2)),
+      cgstAmount: parseFloat(cgstAmount.toFixed(2)),
+      sgstAmount: parseFloat(sgstAmount.toFixed(2)),
+      igstAmount: parseFloat(igstAmount.toFixed(2)),
+      roundOff,
+      grandTotal: roundedTotal
+    };
+  }
+
+  // Create invoice
   static async create(req, res) {
     const { type, series, number, date, customer_id, truck_no, cash_credit, lines } = req.body;
 
@@ -124,21 +171,8 @@ class InvoiceController {
         return res.status(400).json({ error: 'Customer not found' });
       }
 
-      // Calculate totals (placeholder - integrate your gstCalculator)
-      let taxableValue = lines.reduce((sum, line) => sum + (line.qty * line.rate), 0);
-      
-      // Simplified GST (use your calculateGST logic here)
-      let cgstAmount = 0, sgstAmount = 0, igstAmount = 0;
-      if (type === 'TAX_INVOICE' && customer.state_code === '24') {
-        cgstAmount = taxableValue * 0.09;
-        sgstAmount = taxableValue * 0.09;
-      } else if (type === 'TAX_INVOICE') {
-        igstAmount = taxableValue * 0.18;
-      }
-
-      const exactTotal = taxableValue + cgstAmount + sgstAmount + igstAmount;
-      const roundedTotal = Math.round(exactTotal);
-      const roundOff = roundedTotal - exactTotal;
+      // ✅ Calculate GST using HSN rates from DB
+      const totals = await InvoiceController.calcTotalsFromLines(lines, customer, type);
 
       // Use provided number or generate next
       let finalNumber = number;
@@ -159,12 +193,12 @@ class InvoiceController {
         .insert([{
           type, series, number: finalNumber, date, 
           customer_id, truck_no, cash_credit,
-          taxable_value: taxableValue,
-          cgst_amount: cgstAmount,
-          sgst_amount: sgstAmount,
-          igst_amount: igstAmount,
-          round_off: roundOff,
-          grand_total: roundedTotal
+          taxable_value: totals.taxableValue,
+          cgst_amount: totals.cgstAmount,
+          sgst_amount: totals.sgstAmount,
+          igst_amount: totals.igstAmount,
+          round_off: totals.roundOff,
+          grand_total: totals.grandTotal
         }])
         .select('id')
         .single();
@@ -172,15 +206,19 @@ class InvoiceController {
       if (invoiceError) throw invoiceError;
       const invoiceId = invoiceData.id;
 
-      // Save lines
-      const linesData = lines.map(line => ({
+      // Save lines with GST breakdown
+      const linesData = totals.processedLines.map(line => ({
         invoice_id: invoiceId,
         hsn_code: line.hsn_code,
         description: line.description,
         qty: line.qty,
         unit: line.unit,
         rate: line.rate,
-        amount: line.qty * line.rate
+        amount: line.amount,
+        gst_rate: line.gst_rate,
+        cgst: line.cgst,
+        sgst: line.sgst,
+        igst: line.igst
       }));
 
       const { error: linesError } = await db
@@ -189,12 +227,16 @@ class InvoiceController {
       
       if (linesError) throw linesError;
 
-      console.log(`✅ Invoice created: ID ${invoiceId}`);
+      console.log(`✅ Invoice created: ID ${invoiceId}, Total: ${totals.grandTotal}`);
       res.json({
         id: invoiceId,
         series,
         number: finalNumber,
-        grand_total: roundedTotal,
+        grand_total: totals.grandTotal,
+        taxable_value: totals.taxableValue,
+        cgst_amount: totals.cgstAmount,
+        sgst_amount: totals.sgstAmount,
+        igst_amount: totals.igstAmount,
         message: 'Invoice created'
       });
     } catch (error) {
@@ -210,35 +252,55 @@ class InvoiceController {
     try {
       // Delete old lines
       await db.from('invoice_lines').delete().eq('invoice_id', invoiceId);
-      
-      // Calc totals (same as create)
-      let taxableValue = lines.reduce((sum, line) => sum + (line.qty * line.rate), 0);
-      const customer = await db.from('customers').select('state_code').eq('id', customer_id).single();
-      let cgstAmount = 0, sgstAmount = 0, igstAmount = 0;
-      if (type === 'TAX_INVOICE' && customer.data?.state_code === '24') {
-        cgstAmount = taxableValue * 0.09; sgstAmount = taxableValue * 0.09;
-      } else if (type === 'TAX_INVOICE') {
-        igstAmount = taxableValue * 0.18;
-      }
-      const grandTotal = Math.round(taxableValue + cgstAmount + sgstAmount + igstAmount);
-      
+
+      // Get customer
+      const { data: customer } = await db
+        .from('customers')
+        .select('*')
+        .eq('id', customer_id)
+        .single();
+
+      // ✅ Calculate GST using HSN rates from DB
+      const totals = await InvoiceController.calcTotalsFromLines(lines, customer, type);
+
       // Update invoice
       const { error } = await db
         .from('invoices')
-        .update({ type, series, number, date, customer_id, truck_no, cash_credit, 
-                  taxable_value: taxableValue, cgst_amount: cgstAmount, sgst_amount: sgstAmount, 
-                  igst_amount: igstAmount, grand_total: grandTotal })
+        .update({
+          type, series, number, date, customer_id, truck_no, cash_credit,
+          taxable_value: totals.taxableValue,
+          cgst_amount: totals.cgstAmount,
+          sgst_amount: totals.sgstAmount,
+          igst_amount: totals.igstAmount,
+          round_off: totals.roundOff,
+          grand_total: totals.grandTotal
+        })
         .eq('id', invoiceId);
       if (error) throw error;
-      
+
       // Insert new lines
-      const linesData = lines.map(line => ({
-        invoice_id: invoiceId, hsn_code: line.hsn_code, description: line.description,
-        qty: line.qty, unit: line.unit, rate: line.rate, amount: line.qty * line.rate
+      const linesData = totals.processedLines.map(line => ({
+        invoice_id: invoiceId,
+        hsn_code: line.hsn_code,
+        description: line.description,
+        qty: line.qty,
+        unit: line.unit,
+        rate: line.rate,
+        amount: line.amount,
+        gst_rate: line.gst_rate,
+        cgst: line.cgst,
+        sgst: line.sgst,
+        igst: line.igst
       }));
       await db.from('invoice_lines').insert(linesData);
-      
-      res.json({ id: invoiceId, message: 'Invoice updated' });
+
+      res.json({
+        id: invoiceId,
+        series,
+        number,
+        grand_total: totals.grandTotal,
+        message: 'Invoice updated'
+      });
     } catch (error) {
       res.status(500).json({ error: error.message });
     }
@@ -255,25 +317,8 @@ class InvoiceController {
       res.status(500).json({ error: error.message });
     }
   }
-  // Get next number (for /invoices/next/:series)
-  static async getNextNumber(req, res) {
-    try {
-      const { data, error } = await db
-        .from('invoices')
-        .select('number')
-        .eq('series', req.params.series)
-        .order('number', { ascending: false })
-        .limit(1);
-      if (error) throw error;
-      const maxNum = data?.[0]?.number || 0;
-      res.json({ next_number: Number(maxNum) + 1 });
-    } catch (error) {
-      console.error('Next number error:', error);
-      res.status(500).json({ error: error.message });
-    }
-  }
 
-  // Get single invoice for edit (/invoices/:id)
+  // Get single invoice for edit
   static async getById(req, res) {
     try {
       const { data: invoice, error: invError } = await db
@@ -290,15 +335,21 @@ class InvoiceController {
       if (lineError) throw lineError;
       
       res.json({ 
-        invoice: { ...invoice, customer_name: invoice.customers?.name || '' /* etc */ }, 
+        invoice: {
+          ...invoice,
+          customer_name: invoice.customers?.name || '',
+          customer_gstin: invoice.customers?.gstin || '',
+          customer_address: invoice.customers?.address || '',
+          customer_state: invoice.customers?.state || '',
+          customer_state_code: invoice.customers?.state_code || '',
+          customer_mobile: invoice.customers?.mobile || ''
+        },
         lines 
       });
     } catch (error) {
       res.status(500).json({ error: error.message });
     }
   }
-
-
 }
 
 module.exports = InvoiceController;
